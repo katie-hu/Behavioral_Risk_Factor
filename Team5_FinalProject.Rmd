@@ -1,0 +1,193 @@
+---
+title: "Appendix"
+author: "Katie Hu, Lane Whitmore, Sanjay Regi Phillip"
+date: "6/1/2022"
+output: 
+  word_document:
+    reference_docx: Word-Style-Reference.docx
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Behavioral Risk Factor Surveillance System
+
+### Libraries and Dataset
+```{r}
+library(caret)
+library(kableExtra)
+library(ggplot2)
+library(tidyverse)
+library(Hmisc)
+```
+
+```{r}
+behavrisk_df <- read.csv("~/Documents/GitHub/Behavioral_Risk_Factor/Data/2015.csv")
+# dim(behavrisk_df)
+# summary(br_df)
+```
+## Data PreProcessing
+
+```{r Pre-Processing}
+# Set new dataframe for editing
+bh_df <- behavrisk_df
+
+# Fix Dates
+bh_df$IDATE <- gsub("[a-z]", "", bh_df$IDATE)
+bh_df$IDATE <- gsub("'", "", bh_df$IDATE)
+
+bh_df$IMONTH <- gsub("[a-z]", "", bh_df$IMONTH)
+bh_df$IMONTH <- gsub("'", "", bh_df$IMONTH)
+
+bh_df$IDAY <- gsub("[a-z]", "", bh_df$IDAY)
+bh_df$IDAY <- gsub("'", "", bh_df$IDAY)
+
+bh_df$IYEAR <- gsub("[a-z]", "", bh_df$IYEAR)
+bh_df$IYEAR <- gsub("'", "", bh_df$IYEAR)
+
+# Replace blanks with NA
+bh_df$PCDMDECN <- gsub("[a-z]", "", bh_df$PCDMDECN)
+bh_df$PCDMDECN <- gsub("'", "", bh_df$PCDMDECN)
+bh_df$PCDMDECN[bh_df$PCDMDECN == ""] <- NA
+
+
+bh_df$EXACTOT1 <- substring(bh_df$EXACTOT1, 3)
+bh_df$EXACTOT1[bh_df$EXACTOT1 == "'"] <- NA
+
+bh_df$EXACTOT2 <- substring(bh_df$EXACTOT2, 3)
+bh_df$EXACTOT2[bh_df$EXACTOT2 == "'"] <- NA
+```
+
+```{r}
+bh_df$IDATE <- as.numeric(bh_df$IDATE)
+bh_df$IMONTH<- as.numeric(bh_df$IMONTH)
+bh_df$IDAY <- as.numeric(bh_df$IDAY)
+bh_df$IYEAR <- as.numeric(bh_df$IYEAR)
+bh_df$PCDMDECN <- as.numeric(bh_df$PCDMDECN)
+# is.numeric(bh_df$IYEAR)
+```
+
+```{r}
+# Percentage of each column missing
+# na <- sapply(behavrisk_df, function(x) sum(is.na(x)))
+colSums(is.na(bh_df))
+```
+
+So these two variables show in the codebook that the data is hidden and classified as all blanks; however, there's definitely data there. Not sure if this should just be an assumption to drop or to turn it into maybe ordinal values or something. I'm going to drop it for this purpose.
+
+```{r character data types}
+# unique(bh_df$EXACTOT1)
+# unique(bh_df$EXACTOT2)
+
+bh_df = subset(bh_df, select = -c(EXACTOT1, EXACTOT2))
+```
+
+I gave both options for the train test model in case there's a strong preference of one over the other.
+
+
+Zero Variance Predictors - 30 Variables Removed
+Remove variables with over 30% of data missing
+```{r}
+# Remove zero variance predictors
+bh_df <- bh_df[, -nearZeroVar(bh_df)]
+
+# Remove variables with more than 40% missing.
+bh_df <- bh_df[, which(colMeans(!is.na(bh_df)) > 0.3)]
+
+# Remove SEQNO and X_PSU for zero variance
+bh_df = subset(bh_df, select = -c(SEQNO, X_PSU))
+
+# PreProcess Imputation
+trans <- preProcess(bh_df,
+                    method = c("center", "scale"))
+
+# Apply the transformations to the original data:
+bh_df <- predict(trans,  bh_df)
+
+# Replace values with mean
+bh_df$PHYSHLTH[is.na(bh_df$PHYSHLTH)] <- mean(bh_df$PHYSHLTH, na.rm = TRUE)
+bh_df$GENHLTH[is.na(bh_df$GENHLTH)] <- mean(bh_df$GENHLTH, na.rm = TRUE)
+
+#For quick run through
+bh_quick <- bh_df[, colSums(is.na(bh_df)) == 0]
+
+correlations <- cor(bh_df)
+dim(correlations)
+correlations[1:4, 1:4]
+
+library(corrplot)
+# corrplot(correlations, order = "hclust")
+
+# highCorr <- findCorrelation(correlations, cutoff = .75) # find highly correlated predictors
+# length(highCorr)
+# head(highCorr)
+# filteredSegData <- segData[, -highCorr] # remove highly correlated predictors
+
+# # look at the correlation structure after removing highly correlated predictors
+# correlationsFiltered <- cor(filteredSegData)
+# corrplot(correlationsFiltered, order = "hclust")
+
+```
+
+```{r Train Test Split}
+# Split the data into training (80%) and test sets (20%)
+set.seed(100)
+inTrain <- createDataPartition(bh_df$GENHLTH, p = .8, list = FALSE)
+
+# Train Model
+train_X <- bh_df[inTrain, -1]
+train_y <- bh_df[inTrain, 1]
+
+# Test Model
+test_X <- bh_df[-inTrain, -1]
+test_y <- bh_df[-inTrain, 1]
+
+# Train/Test Model
+bhTrain <- bh_df[inTrain,]
+bhTest <- bh_df[-inTrain,]
+
+ctrl <- trainControl(method = "cv")
+```
+
+```{r Neural Networks}
+library(caret)
+set.seed(100)
+
+nnetGrid <- expand.grid(decay = c(0, 0.01, .1), 
+                        size = c(3, 7, 11, 13))
+
+set.seed(100)
+nnetTune <- train(x = train_X, y = train_y,
+                  method = "nnet",
+                  tuneGrid = nnetGrid,
+                  trControl = ctrl,
+                  preProc = c("center", "scale"),
+                  linout = TRUE,
+                  trace = FALSE,
+                  MaxNWts = 13 * (ncol(train_X) + 1) + 13 + 1,
+                  maxit = 1000)
+
+nnetTune
+```
+
+```{r k-NN}
+set.seed(100)
+knnTune <- train(train_X, train_y,
+                 method = "knn",
+                 preProc = c("center", "scale"),
+                 trControl = ctrl)
+knnTune
+```
+
+
+```{r SVM}
+set.seed(100)
+
+svmTune <- train(x = train_X, y = train_y,
+                  method = "svmRadial",
+                  preProc = c("center", "scale"),
+                  tuneLength = 14,
+                  trControl = ctrl)
+svmTune
+```
