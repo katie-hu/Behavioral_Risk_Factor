@@ -19,8 +19,9 @@ df <- read.csv('2015.csv')
 library(AppliedPredictiveModeling)
 library(caret)
 bhv.risk <- df
+bhv.risk <- bhv.risk[!(is.na(bhv.risk$GENHLTH)),]
 set.seed(444)
-trainingRows <- createDataPartition(y=bhv.risk$HLTHPLN1, p=0.75, list = FALSE)
+trainingRows <- createDataPartition(y=bhv.risk$GENHLTH, p=0.75, list = FALSE)
 risk.train <- bhv.risk[trainingRows,]
 risk.test <- bhv.risk[-trainingRows,]
 ```
@@ -139,7 +140,7 @@ bhv.train.fixed <- risk.train %>%
   mutate_at(c(17:18,101,272,274,276:287,292:293,295:296,299:300,305:314), rounddig0)%>% 
   # These variables do not impute with median, due to this null + no response + refuse = 
   # 0 representing factorial non-responses all together
-  mutate_at(c(36,38:39,41,44:45,48,51,60,64,68:77,90,98:100,106:107,110:112,118:120,125,127:128,
+  mutate_at(c(35:36,38:39,41,44:45,48,51,60,64,68:77,90,98:100,106:107,110:112,118:120,125,127:128,
               130:136,141:149,151,153,160:174,176:197,211:212,221:222,232,243:244,
               248,255,323:330),funcbin)%>%
   mutate_at(c(63,78,91,94,102:103,105,109,137), funcmultifact)%>%
@@ -166,7 +167,7 @@ bhv.test.fixed <- risk.test %>%
   mutate_at(c(81:83,101,115:117,213:220), funcunder76)%>%
   mutate_at(c(17:18,101,272,274,276:287,292:293,295:296,299:300,305:314), rounddig0)%>% 
   #rounding off columns that need it
-  mutate_at(c(36,38:39,41,44:45,48,51,60,64,68:77,90,98:100,106:107,110:112,118:120,125,127:128,
+  mutate_at(c(35:36,38:39,41,44:45,48,51,60,64,68:77,90,98:100,106:107,110:112,118:120,125,127:128,
               130:136,141:149,151,153,160:174,176:197,211:212,221:222,232,243:244,
               248,255,323:330),funcbin)%>%
   mutate_at(c(63,78,91,94,102:103,105,109,137), funcmultifact)%>%
@@ -216,7 +217,8 @@ bhv.test.nzv[,dub_cols] <- test.dub
 # Some predictors can be dropped that are full of nulls and not offer any value
 # Due to the categorical predictors, correlation can't be used to remove correlated variables
 # The variables have been manually removed that are highly related/ measure the same thing
-bhv.train.dropped <- bhv.train.nzv[, -c(3,6:10,14:16,46:48,89,93,103:109,119:121,125:134,144:157,181)]
+bhv.train.dropped <- bhv.train.nzv[, -c(3,6:10,14:16,46:48,89,93,103:109,119:121,125:134,144:157,181
+                                        )]
 bhv.test.dropped <- bhv.test.nzv[, -c(3,6:10,14:16,46:48,89,93,103:109,119:121,125:134,144:157,181)]
 
 sapply(bhv.train.dropped, function(x) sum(is.na(x)))
@@ -227,21 +229,19 @@ sum(dub_cols)
 
 
 ```{r}
-#corr <- cor(bhv.train.dropped[, -10])
-
-#as.numeric(bhv.train.dropped)
-
-sapply(bhv.train.dropped, function(x) typeof(x))
+num_colsdr <- unlist(lapply(bhv.train.dropped, is.numeric))
+numeric.cor <- cor(bhv.train.dropped[, num_colsdr])
+numeric.high <- findCorrelation(bio.cor, cutoff = .85)
+bhv.train.cor.nzv <- bhv.train.dropped[, -numeric.high]
+bhv.test.cor.nzv <- bhv.test.dropped[, -numeric.high]
 ```
 
 
 ```{r}
-bhv.train.nzv[is.double(bhv.train.nzv)]
-num_cols <- unlist(lapply(bhv.train.nzv, is.numeric))
-bhv.train.nzv[,num_cols]
+
 ```
 
 ```{r}
-# sapply(bhv.train.dropped, function(x) table(x))
+
 ```
 
