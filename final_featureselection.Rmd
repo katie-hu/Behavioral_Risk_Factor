@@ -351,7 +351,7 @@ ctrl <- trainControl(method = "cv")
 
 set.seed(100)
 
-svmTune <- train(x = trainpr[,2:170],
+svmTune <- train(x = trainpr[,2:153],
                  y = trainpr$GENHLTH,
                  method = "svmRadial",
                  preProc = c("center", "scale"),
@@ -368,7 +368,7 @@ nnetGrid <- expand.grid(decay = c(0, 0.01, .1),
                         size = c(3, 7, 11, 13))
 
 set.seed(100)
-nnetTune <- train(x = trainpr[,2:170],
+nnetTune <- train(x = trainpr[,2:153],
                   y = trainpr$GENHLTH,
                   method = "nnet",
                   tuneGrid = nnetGrid,
@@ -388,7 +388,7 @@ library(caret)
 set.seed(100)
 ctrl <- trainControl(method = "cv")
 
-knnTune <- train(x = trainpr[,2:170],
+knnTune <- train(x = trainpr[,2:153],
                  y = trainpr$GENHLTH,
                  method = "knn",
                  preProc = c("center", "scale"),
@@ -398,7 +398,7 @@ varImp(knnTune, scale = FALSE)
 
 ```{r NSC}
 set.seed(476)
-nsc <- train(x = trainpr[,2:170], 
+nsc <- train(x = trainpr[,2:153], 
                 y = trainpr$GENHLTH,
                 method = "pam",
                 preProc = c("center", "scale"),
@@ -418,7 +418,7 @@ set.seed(476)
 glmGrid <- expand.grid(alpha = c(0,  .1,  .2, .4, .6, .8, 1),
                         lambda = seq(.01, .2, length = 10))
 
-glm <- train(x = trainpr[,2:170],
+glm <- train(x = trainpr[,2:153],
              y = trainpr$GENHLTH,
              method = "glmnet",
              tuneGrid = glmGrid,
