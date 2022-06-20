@@ -286,6 +286,63 @@ testpr <- predict(trainimp, bhv_test)
 # summary(testpr)
 ```
 
+#### Subset predictors to reduce training time
+```{r}
+s1 <- trainpr[2:50]
+s2 <- trainpr[51:100]
+s3 <- trainpr[101:140]
+s4 <- trainpr[141:170]
+```
+
+```{r}
+#long loading time
+library(caret)
+library(randomForest)
+
+# set.seed(100)
+# rf <- randomForest(trainpr$GENHLTH ~.,
+#                    data = s1)
+# 
+# v1 <- varImp(rf, scale = FALSE)
+# v1
+```
+
+```{r}
+library(MASS)
+library(olsrr)
+model1 <- lm(trainpr$GENHLTH ~.,
+            data = s1)
+model2 <- lm(trainpr$GENHLTH ~.,
+            data = s2)
+model3 <- lm(trainpr$GENHLTH ~.,
+            data = s3)
+model4 <- lm(trainpr$GENHLTH ~.,
+            data = s4)
+# back_stepwise <- stepAIC(model, direction = "backward")
+
+sm1 <- ols_step_backward_p(model1, details = TRUE)
+sm2 <- ols_step_backward_p(model2, details = TRUE)
+sm3 <- ols_step_backward_p(model3, details = TRUE)
+sm4 <- ols_step_backward_p(model4, details = TRUE)
+```
+
+```{r}
+remove <- list(sm1, sm2, sm3, sm4)
+print(remove)
+```
+
+```{r}
+# Final Train and Test
+bhv_train <- subset(bhv_train, select = -c(FRUITJU1, HHADULT, NUMWOMEN, NUMMEN, IDAY, DECIDE, VETERAN3, NUMADULT, ADTHINK, ASRCHKUP, ASERVIST, ASDRVIST, HADSIGM3, X_FRUTSUM, HTIN4, PA1MIN_, X_MINAC21))
+                    
+bhv_test <- subset(bhv_test, select = -c(FRUITJU1, HHADULT, NUMWOMEN, NUMMEN, IDAY, DECIDE, VETERAN3, NUMADULT, ADTHINK, ASRCHKUP, ASERVIST, ASDRVIST, HADSIGM3, X_FRUTSUM, HTIN4, PA1MIN_, X_MINAC21))
+
+trainpr <- subset(trainpr, select = -c(FRUITJU1, HHADULT, NUMWOMEN, NUMMEN, IDAY, DECIDE, VETERAN3, NUMADULT, ADTHINK, ASRCHKUP, ASERVIST, ASDRVIST, HADSIGM3, X_FRUTSUM, HTIN4, PA1MIN_, X_MINAC21))
+
+testpr <- subset(testpr, select = -c(FRUITJU1, HHADULT, NUMWOMEN, NUMMEN, IDAY, DECIDE, VETERAN3, NUMADULT, ADTHINK, ASRCHKUP, ASERVIST, ASDRVIST, HADSIGM3, X_FRUTSUM, HTIN4, PA1MIN_, X_MINAC21))
+```
+
+
 
 ```{r SVM}
 library(caret)
