@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
-df <- read.csv('/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/2015_revised.csv')
+df <- read.csv('/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/2015.csv')
 ```
 
 ```{r}
@@ -23,7 +23,7 @@ bhv.risk <- df
 set.seed(444)
 
 #subset specifically for HLTHPLN1
-#bhv.risk <- subset(bhv.risk, HLTHPLN1 == 2)
+bhv.risk <- subset(bhv.risk, HLTHPLN1 == 2)
 
 # data splitting
 bhv.risk <- bhv.risk %>% drop_na(GENHLTH)
@@ -311,7 +311,7 @@ library(randomForest)
 # v1
 ```
 
-```{r}
+```{r, results=FALSE}
 library(MASS)
 library(olsrr)
 model1 <- lm(trainpr$GENHLTH ~.,
@@ -352,6 +352,10 @@ testpr <- subset(testpr, select = -c(HHADULT, NUMWOMEN, NUMMEN, IDAY, DECIDE, VE
 train <- trainpr
 test <- testpr
 
+# convert GENHLTH to factor for classification
+train[,1] <- as.factor(train[,1])
+test[,1] <- as.factor(test[,1])
+
 train_preProcess <- preProcess(train, method = c("center", "scale"))
 test_preProcess <- preProcess(test, method = c("center", "scale"))
 
@@ -386,27 +390,29 @@ test <- test[,c(1	,5	,6	,7	,12	,15	,17	,26	,31	,35	,39	,46	,49	,52	,64	,65	,66	,
 
 
 
-
 #### Model Building
 
-# ```{r SVM}
-# library(caret)
-# 
-# ctrl <- trainControl(method = "cv")
-# 
-# set.seed(100)
-# 
-# svmTune <- train(x = train[,-1],
-#                  y = train$GENHLTH,
-#                  method = "svmRadial",
-#                  tuneLength = 14,
-#                  trControl = ctrl)
-# ```
+```{r SVM}
+library(caret)
 
+#ctrl <- trainControl(method = "cv")
+ctrl <- trainControl(method = "none")
+
+set.seed(100)
+
+svmTune <- train(x = train[,-1],
+                y = train$GENHLTH,
+                method = "svmRadial",
+                #tuneLength = 14,
+                trControl = ctrl)
+
+print("completed")
+```
 
 ```{r Neural Networks}
 library(caret)
 set.seed(100)
+
 nnetGrid <- expand.grid(decay = c(0, 0.01, .1), 
                         size = c(3, 7, 11, 13))
 
@@ -414,15 +420,14 @@ set.seed(100)
 nnetTune <- train(x = train[,-1],
                  y = train$GENHLTH,
                   method = "nnet",
-                  tuneGrid = nnetGrid,
+                  #tuneGrid = nnetGrid,
                   trControl = ctrl,
                   linout = TRUE,
                   trace = FALSE,
                   MaxNWts = 13 * (ncol(train[,-1]) + 1) + 13 + 1,
                   maxit = 1000)
-
+print("completed")
 ```
-
 
 ```{r k-NN}
 library(caret)
@@ -432,43 +437,75 @@ knnTune <- train(x = train[,-1],
                  y = train$GENHLTH,
                  method = "knn",
                  trControl = ctrl)
-
+print("completed")
 ```
 
-```{r NSC}
-set.seed(100)
-nsc <- train(x = train[,-1],
-             y = train$GENHLTH,
-             method = "pam",
-             tuneGrid = data.frame(threshold = seq(0, 25, length = 30)),
-             metric = "ROC",
-             trControl = ctrl)
+# ```{r NSC}
+# set.seed(100)
+# 
+# NSC_ctrl <- trainControl(method = "none", classProbs = TRUE)
+# 
+# 
+# nsc <- train(x = train[,-1],
+#              y = train$GENHLTH,
+#              method = "pam",
+#              #tuneGrid = data.frame(threshold = seq(0, 25, length = 30)),
+#              metric = "ROC",
+#              trControl = NSC_ctrl)
+# print("completed")
+# ```
+
+# ```{r glmnet}
+# 
+# # ctrl <- trainControl(method = "cv",
+# #                      classProbs = TRUE,
+# #                      savePredictions = TRUE)
+# 
+# set.seed(100)
+# 
+# #glmGrid <- expand.grid(alpha = c(0,  .1,  .2, .4, .6, .8, 1),
+#                         #lambda = seq(.01, .2, length = 10))
+# 
+# glm <- train(x = train[,-1],
+#              y = train$GENHLTH,
+#              method = "glmnet",
+#              #tuneGrid = glmGrid,
+#              metric = "ROC",
+#              trControl = ctrl)
+# print("completed")
+# ```
+
+
+#### Model Results
+
+```{r ModelResults}
+#SVM Results
+testResults <- data.frame(obs = test$GENHLTH,
+                          svm_results = predict(svmTune, test[,-1]))
+
+#svm_CM<- confusionMatrix(svmTune, norm = "none")
+
+#nnet
+testResults$nnet_results <- predict(nnetTune, test[,-1])
+
+#nnet_CM<- confusionMatrix(nnetTune, norm = "none")
+
+#knn
+testResults$knn_results <- predict(knnTune, test[,-1])
+
+#knn_CM<- confusionMatrix(knnTune, norm = "none")
+
+#nsc
+# testResults$nsc_results <- predict(nsc, test[,-1])
+# 
+# nsc_CM<- confusionMatrix(nsc, norm = "none")
+
+#glm
+# testResults$glm_results <- predict(glm, test[,-1])
+# 
+# glm_CM<- confusionMatrix(glm, norm = "none")
+
 ```
-
-```{r glmnet}
-
-ctrl <- trainControl(method = "cv",
-                     classProbs = TRUE,
-                     savePredictions = TRUE)
-
-set.seed(100)
-
-glmGrid <- expand.grid(alpha = c(0,  .1,  .2, .4, .6, .8, 1),
-                        lambda = seq(.01, .2, length = 10))
-
-glm <- train(x = train[,-1],
-             y = train$GENHLTH,
-             method = "glmnet",
-             tuneGrid = glmGrid,
-             metric = "ROC",
-             trControl = ctrl)
-```
-
-
-
-
-
-
 
 
 
