@@ -23,7 +23,7 @@ bhv.risk <- df
 set.seed(444)
 
 #subset specifically for HLTHPLN1
-bhv.risk <- subset(bhv.risk, HLTHPLN1 == 2)
+#bhv.risk <- subset(bhv.risk, HLTHPLN1 == 2)
 
 # data splitting
 bhv.risk <- bhv.risk %>% drop_na(GENHLTH)
@@ -359,8 +359,8 @@ train <- predict(train_preProcess, train)
 test <- predict(test_preProcess, test)
 
 
-write.csv(train, "/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/train.csv", row.names=FALSE)
-write.csv(test, "/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/test.csv", row.names=FALSE)
+# write.csv(train, "/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/train.csv", row.names=FALSE)
+# write.csv(test, "/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/test.csv", row.names=FALSE)
 ```
 
 
@@ -374,9 +374,9 @@ write.csv(test, "/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/test.csv", ro
 
 #### Manual Feature Selection
 ```{r}
-predictor_names <- names(train)
-
-write.csv(predictor_names, "/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/predictor_names.csv", row.names=FALSE)
+# predictor_names <- names(train)
+# 
+# write.csv(predictor_names, "/Users/sanjayregiphilip/OneDrive/DS/ADS 503/Final/predictor_names.csv", row.names=FALSE)
 
 
 train <- train[,c(1	,5	,6	,7	,12	,15	,17	,26	,31	,35	,39	,46	,49	,52	,64	,65	,66	,126)]
@@ -389,19 +389,19 @@ test <- test[,c(1	,5	,6	,7	,12	,15	,17	,26	,31	,35	,39	,46	,49	,52	,64	,65	,66	,
 
 #### Model Building
 
-```{r SVM}
-library(caret)
-
-ctrl <- trainControl(method = "cv")
-
-set.seed(100)
-
-svmTune <- train(x = train[,-1],
-                 y = train$GENHLTH,
-                 method = "svmRadial",
-                 tuneLength = 14,
-                 trControl = ctrl)
-```
+# ```{r SVM}
+# library(caret)
+# 
+# ctrl <- trainControl(method = "cv")
+# 
+# set.seed(100)
+# 
+# svmTune <- train(x = train[,-1],
+#                  y = train$GENHLTH,
+#                  method = "svmRadial",
+#                  tuneLength = 14,
+#                  trControl = ctrl)
+# ```
 
 
 ```{r Neural Networks}
