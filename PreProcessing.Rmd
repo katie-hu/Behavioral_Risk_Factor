@@ -20,13 +20,13 @@ library(AppliedPredictiveModeling)
 library(caret)
 library(tidyr)
 bhv.risk <- df
-set.seed(444)
 
 #subset specifically for HLTHPLN1 & State of California
 bhv.risk <- subset(bhv.risk, HLTHPLN1 == 2 & X_STATE == 6)
 bhv.riskspl <- subset(bhv.risk, select = c(1,27:74,90:97))
 # data splitting
 bhv.risk <- bhv.riskspl %>% drop_na(GENHLTH)
+set.seed(444)
 trainingRows <- createDataPartition(y=bhv.risk$GENHLTH, p=0.75, list = FALSE)
 risk.train <- bhv.risk[trainingRows,]
 risk.test <- bhv.risk[-trainingRows,]
