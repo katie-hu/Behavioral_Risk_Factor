@@ -378,8 +378,24 @@ multi_var <- varImp(multinom, scale = FALSE)
 multi_var
 ```
 
+```{r cart}
+library(rpart)
+cart <- rpart(GENHLTH ~., data = trainpr)
+cart_var <- varImp(cart, scale = FALSE)
+cart_var
+```
+
+```{r C5.0}
+library(C50)
+c5 <- C5.0(GENHLTH ~., data = trainpr)
+c5_var <- varImp(c5, scale = FALSE)
+c5_var
+```
+
 ### Final Features Selected
 ```{r}
-train <- subset(trainpr, select = -c(PREGNANT, CPDEMO1, EXRACT21, RENTHOM1, EXERANY2, HAVARTH3, PERSDOC2))
-test <- subset(testpr, select = -c(PREGNANT, CPDEMO1, EXRACT21, RENTHOM1, EXERANY2, HAVARTH3, PERSDOC2))
+train <- subset(trainpr, select = -c(PREGNANT, CPDEMO1, EXRACT21, RENTHOM1, EXERANY2, PERSDOC2))
+
+test <- subset(testpr, select = -c(PREGNANT, CPDEMO1, EXRACT21, RENTHOM1, EXERANY2, PERSDOC2))
 ```
+
