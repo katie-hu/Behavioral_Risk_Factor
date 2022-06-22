@@ -1,0 +1,410 @@
+---
+title: "final"
+author: "Lane Whitmore, Katie Hu, Sanjay, Regi Philip"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+df <- read.csv('C:/Users/whitm/OneDrive/Desktop/Rpy/2015.csv')
+```
+
+```{r}
+library(AppliedPredictiveModeling)
+library(caret)
+library(tidyr)
+bhv.risk <- df
+
+#subset specifically for HLTHPLN1 & State of California
+bhv.risk <- subset(bhv.risk, HLTHPLN1 == 2 & X_STATE == 6)
+bhv.riskspl <- subset(bhv.risk, select = c(1,27:74,90:97))
+
+bhv.risk <- bhv.riskspl %>% drop_na(GENHLTH)
+# dropping the single unsure response
+bhv.risk <- bhv.risk[-1016,]
+# data splitting
+set.seed(444)
+trainingRows <- createDataPartition(y=bhv.risk$GENHLTH, p=0.75, list = FALSE)
+risk.train <- bhv.risk[trainingRows,]
+risk.test <- bhv.risk[-trainingRows,]
+```
+
+```{r, echo = FALSE}
+library(dplyr)
+
+## has outlier 2099 lbs
+# weight in lbs
+funcweight <- function(x, na.rm = FALSE) if_else(x>9000 & x<9999, true = round((x-9000)*2.2),
+                                                 false = if_else(x==7777, true = NaN,
+                                                                 false = if_else(x==9999,
+                                                                                 true = NaN,
+                                                                                 false = x)))
+# height in inches
+funcheight <- function(x, na.rm = FALSE) if_else(x>200 & x <711, 
+                                                 true=as.numeric(substr(x,1,1))*12+as.numeric(substr(x,2,3)),
+                                                 false = if_else(x > 9000 & x <9999, true= round((x-9000)*0.39370079),
+                                                                 false = if_else(x==9999, true = NaN,
+                                                                                 false =if_else(x==7777, 
+                                                                                                true = NaN, 
+                                                                                                false = x))))
+# exercise a month
+funcexer <- function(x, na.rm = FALSE) if_else(x > 100 & x < 200, true = (x-100)*4,
+                                               false = if_else(x > 200 & x < 300, true = x - 200,
+                                                               false = if_else(x==777, true = NaN,
+                                                                               false = if_else(x==999,
+                                                                                               true = NaN, 
+                                                                                               false = x))))
+
+# strength training a month
+funcstrength <- function(x, na.rm = FALSE) if_else(x>200 & x <300, true = x-200,
+                                                   false = if_else(x>100 & x<200,
+                                                                   true = (x-100)*4,
+                                                                   false = if_else(x==888,
+                                                                                   true = 0,
+                                                                                   false = if_else(x==777,
+                                                                                                   true = NaN,
+                                                                                                   false = if_else(x==999,true = NaN, false = x)))))
+
+
+funcgenhlth <- function(x, na.rm = FALSE) if_else(x==7, true = NaN, false = x)
+
+
+funchlth <- function(x, na.rm = FALSE) if_else(x==88, true = 0,false = if_else(x==77,true = NaN,
+                                                                               false = if_else(x==99, true = NaN,
+                                                                                               false=x)))
+funcage <- function(x, na.rm = FALSE) if_else(x == 98 | x == 99, true = NaN, false = x)
+
+funcexhmm <- function(x, na.rm = FALSE) if_else(x==777, 
+                                                true = NaN, 
+                                                false = if_else(x==999,
+                                                                true = NaN,
+                                                                false = x))
+
+funcchild <- function(x, na.rm = FALSE) if_else(x == 88, true = 0, false = if_else(x==99,
+                                                                                   true = NaN,
+                                                                                   false = x))
+# Want to make a third option that shows all nonresponses whether they be null or refusal
+funcbin <- function(x, na.rm = TRUE) if_else(is.na(x), true= 0, 
+                                             false = if_else(x== 7 | x== 9,true = 0,
+                                                             false = x))
+
+funcmultifact <- function(x, na.rm = TRUE) if_else(is.na(x), true = 0,
+                                                   false = if_else(x==77 |x==99,
+                                                                   true = NaN,
+                                                                   false = x))
+
+```
+
+```{r}
+bhv.train.fixed <- risk.train %>%
+  mutate_at(40, funcweight)%>%
+  mutate_at(41, funcheight)%>%
+  mutate_at(c(52,55), funcexer)%>%
+  mutate_at(57,funcstrength)%>%
+  mutate_at(c(7:26,29:35,39,42:50),funcbin)%>%
+  mutate_at(c(27),funcage)%>%
+  mutate_at(c(38,51,54), funcmultifact)%>%
+  mutate_at(c(53,56), funcexhmm)%>%
+  mutate_at(c(3:5), funchlth)%>%
+  mutate_at(37, funcchild)%>%
+  mutate_at(3, funcchild)%>%
+  mutate_at(2, funcgenhlth)%>%
+  mutate_at(2, as.factor)
+
+bhv.test.fixed <- risk.test %>%
+  mutate_at(40, funcweight)%>%
+  mutate_at(41, funcheight)%>%
+  mutate_at(c(52,55), funcexer)%>%
+  mutate_at(57,funcstrength)%>%
+  mutate_at(c(7:26,29:35,39,42:50),funcbin)%>%
+  mutate_at(c(27),funcage)%>%
+  mutate_at(c(38,51,54), funcmultifact)%>%
+  mutate_at(c(53,56), funcexhmm)%>%
+  mutate_at(c(3:5), funchlth)%>%
+  mutate_at(37, funcchild)%>%
+  mutate_at(2, funcgenhlth)%>%
+  mutate_at(2, as.factor)
+```
+
+```{r}
+sapply(bhv.train.fixed, function(x) sum(is.na(x)))
+
+
+bhv.train.filled <- sapply(bhv.train.fixed, function(x) ifelse(is.na(x), median(x, na.rm=TRUE), x))
+bhv.test.filled <- sapply(bhv.test.fixed, function(x) ifelse(is.na(x), median(x, na.rm=TRUE), x))
+
+bhv.train.filled <- data.frame(bhv.train.filled)
+bhv.test.filled <- data.frame(bhv.test.filled)
+sapply(bhv.train.filled, function(x) sum(is.na(x)))
+```
+
+
+```{r}
+degeneratePredictors <- nearZeroVar(bhv.train.filled)
+```
+
+
+```{r}
+bhv.train.nzv <- bhv.train.filled[,-degeneratePredictors]
+bhv.test.nzv <- bhv.test.filled[,-degeneratePredictors]
+```
+
+
+
+```{r}
+
+# Remove highly correlated variables
+num_colsdr <- unlist(lapply(bhv.train.nzv, is.numeric))
+numeric.cor <- cor(bhv.train.nzv[,-1])
+
+corrplot::corrplot(numeric.cor, order = 'hclust', tl.cex = 0.6)
+
+numeric.high <- findCorrelation(numeric.cor, cutoff = .85)
+
+# One single GENHLTH through the EDA below was found to have 7 for non response
+# This value was removed as we would like to predict Health. 
+bhv.train.cor.nzv <- bhv.train.nzv[, -numeric.high]
+bhv.test.cor.nzv <- bhv.test.nzv[, -numeric.high]
+corrplot::corrplot(cor(bhv.train.cor.nzv), order = 'hclust', tl.cex = 0.6)
+```
+
+```{r}
+library(ggplot2)
+par(mfrow=c(2,3))
+boxplot(bhv.train.cor.nzv$HEIGHT3 ~ bhv.train.cor.nzv$GENHLTH,
+        ylab = 'Height in Inches',
+        xlab = 'General Health')
+boxplot(bhv.train.cor.nzv$WEIGHT2 ~ bhv.train.cor.nzv$GENHLTH,
+        ylab = 'Weight in Pounds',
+        xlab = 'General Health')
+boxplot(bhv.train.cor.nzv$EXERHMM1 ~ bhv.train.cor.nzv$GENHLTH,
+        ylab = 'Hours Exercised Last Month',
+        xlab = 'General Health')
+boxplot(bhv.train.cor.nzv$PHYSHLTH ~ bhv.train.cor.nzv$MEDCOST,
+        ylab = 'Days Poor Physical Health Last Month',
+        xlab = 'Could not Afford last Medical Trip')
+boxplot(bhv.train.cor.nzv$MENTHLTH ~ bhv.train.cor.nzv$MEDCOST,
+        ylab = 'Days Poor Mental Health Last Month',
+        xlab = 'Could not Afford last Medical Trip')
+boxplot(bhv.train.cor.nzv$WEIGHT2 ~ bhv.train.cor.nzv$DIABETE3,
+        ylab = 'Weight in Pounds',
+        xlab = 'Diabetes Yes/Yes/No/NoPreDia')
+```
+
+
+```{r}
+General_Health <- as.factor(bhv.train.cor.nzv$GENHLTH)
+
+
+ggplot(bhv.train.cor.nzv, aes(x = WEIGHT2, y = HEIGHT3,
+                              color = as.factor(DIABETE3))) +
+  ylab("Height in Inches")+
+  xlab("Weight in Pounds")+
+  geom_point(size = 2)+
+  scale_color_discrete(labels = c('No Response','Yes','Yes Preg','No','No/Pre'),
+                       type = c('royalblue3','indianred3','plum3','darkseagreen4',
+                                'sienna3'))
+
+
+
+ggplot(bhv.train.cor.nzv, aes(x = WEIGHT2, y = HEIGHT3,
+                              color = General_Health)) +
+  ylab("Height in Inches")+
+  xlab("Weight in Pounds")+
+  geom_point(size = 2)+
+  scale_color_discrete(labels = c('Excellent','Very Good','Good','Fair','Poor'),
+                       type = c('royalblue3','indianred3','plum3','darkseagreen4',
+                                'sienna3'))
+
+
+ggplot(bhv.train.cor.nzv, aes(y= EXERHMM1, x=MENTHLTH, 
+                              color = General_Health))+
+  ylab('Hours Exercised in the Last Month')+
+  xlab('Poor Mental Health Days')+
+  geom_point(size=2)+
+  scale_color_discrete(labels = c('Excellent','Very Good','Good','Fair','Poor'),
+                       type = c('royalblue3','indianred3','plum3','darkseagreen4',
+                                'sienna3'))
+```
+
+
+```{r}
+par(mfrow=c(2,4))
+hist(bhv.train.cor.nzv$WEIGHT2, 
+     xlab = 'Weight in Pounds',
+     main = 'Weight',
+     col = 'lightblue',
+     border = 'black')
+hist(bhv.train.cor.nzv$HEIGHT3, 
+     xlab = 'Height in Inches',
+     main = 'Height',
+     col = 'lightblue',
+     border = 'black')
+hist(bhv.train.cor.nzv$GENHLTH, 
+     xlab = 'General Health',
+     main = 'General Health',
+     col = 'lightblue',
+     border = 'black')
+hist(bhv.train.cor.nzv$EXEROFT1, 
+     xlab = 'Exercise Last Month',
+     main = 'Exercise Last Month',
+     col = 'lightblue',
+     border = 'black')
+hist(bhv.train.cor.nzv$EXEROFT2, 
+     xlab = 'Exercise Last Month',
+     main = 'Exercise Last Month',
+     col = 'lightblue',
+     border = 'black')
+hist(bhv.train.cor.nzv$EXERHMM2, 
+     xlab = 'Exercise Hours Last Month',
+     main = 'Exer. Hours Last Month',
+     col = 'lightblue',
+     border = 'black')
+hist(bhv.train.cor.nzv$DIABETE3, 
+     xlab = 'Diabetes Yes/Yes/No/No',
+     main = 'Diabetes',
+     col = 'lightblue',
+     border = 'black')
+hist(bhv.train.cor.nzv$STRENGTH, 
+     xlab = 'Strength Training Per Month',
+     main = 'Strength',
+     col = 'lightblue',
+     border = 'black')
+```
+
+
+### Feature Selection
+
+```{r}
+# Final Train and Test
+bhv_train <- bhv.train.cor.nzv
+bhv_test <- bhv.test.cor.nzv
+```
+
+```{r}
+# Check data types
+sapply(bhv_train, function(x) typeof(x))
+```
+
+```{r}
+# Check data type class
+sapply(bhv_train, class)
+
+# convert GENHLTH to factor for classification
+bhv_train[,1] <- as.factor(bhv_train[,1])
+bhv_test[,1] <- as.factor(bhv_test[,1])
+
+sapply(bhv_train, class)
+```
+
+```{r}
+trainimp <- preProcess(bhv_train, method = c("medianImpute", "center", "scale"))
+trainpr <- predict(trainimp, bhv_train)
+testpr <- predict(trainimp, bhv_test)
+
+# summary(trainpr)
+# summary(testpr)
+
+ctrl <- trainControl(method = "cv")
+
+# Name class level variables
+# levels(trainpr$GENHLTH) <- c('1', '2', '3', '4', '5', '6')
+```
+
+```{r rf}
+library(caret)
+library(randomForest)
+
+set.seed(100)
+rf <- randomForest(trainpr$GENHLTH ~.,
+                   data = trainpr,
+                   importance = TRUE,
+                   ntree = 1000)
+
+var <- varImp(rf, scale = FALSE)
+var
+```
+
+```{r mars}
+# library(earth)
+# marsGrid <- expand.grid(.degree = 1:2, .nprune = 2:38)
+# set.seed(0)
+# 
+# marsModel <- train(x = trainpr[,2:38],
+#                    y = trainpr$GENHLTH,
+#                    method = "earth",
+#                    tuneGrid = marsGrid)
+# 
+# varImp(marsModel)
+```
+
+
+```{r SVM}
+library(caret)
+
+set.seed(476)
+
+svmTune <- train(x = trainpr[,2:38],
+                 y = trainpr$GENHLTH,
+                 method = "svmRadial",
+                 tuneLength = 14,
+                 trControl = ctrl)
+varImp(svmTune, scale = FALSE)
+```
+
+
+```{r k-NN}
+library(caret)
+set.seed(100)
+
+knnTune <- train(x = trainpr[,2:38],
+                 y = trainpr$GENHLTH,
+                 method = "knn",
+                 tuneLength = 10,
+                 trControl = ctrl)
+knn_var <- varImp(knnTune, scale = FALSE)
+knn_var
+```
+
+```{r glm}
+glm <- glm(GENHLTH ~.,
+           data = trainpr,
+           family = "binomial")
+glm_var <- varImp(glm, scale = FALSE)
+glm_var
+```
+```{r}
+library(nnet)
+multinom <- multinom(GENHLTH ~.,
+                     data = trainpr)
+multi_var <- varImp(multinom, scale = FALSE)
+multi_var
+```
+
+```{r cart}
+library(rpart)
+cart <- rpart(GENHLTH ~., data = trainpr)
+cart_var <- varImp(cart, scale = FALSE)
+cart_var
+```
+
+```{r C5.0}
+library(C50)
+c5 <- C5.0(GENHLTH ~., data = trainpr)
+c5_var <- varImp(c5, scale = FALSE)
+c5_var
+```
+
+### Final Features Selected
+```{r}
+train <- subset(trainpr, select = -c(PREGNANT, CPDEMO1, EXRACT21, RENTHOM1, EXERANY2, PERSDOC2))
+
+test <- subset(testpr, select = -c(PREGNANT, CPDEMO1, EXRACT21, RENTHOM1, EXERANY2, PERSDOC2))
+```
+
