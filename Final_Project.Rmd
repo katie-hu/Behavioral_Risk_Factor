@@ -17,9 +17,9 @@ df <- read.csv('2015.csv')
 
 #### Data PreProcessing
 ```{r}
-library(AppliedPredictiveModeling)
-library(caret)
-library(tidyr)
+library(AppliedPredictiveModeling, quietly = T)
+library(caret, quietly = T)
+library(tidyr, quietly = T)
 bhv.risk <- df
 #subset specifically for HLTHPLN1 & State of California
 bhv.risk <- subset(bhv.risk, HLTHPLN1 == 2 & X_STATE == 6)
@@ -36,7 +36,7 @@ risk.test <- bhv.risk[-trainingRows,]
 
 #### Convert Feature Scaling
 ```{r, echo = FALSE}
-library(dplyr)
+library(dplyr, quietly = T)
 ## has outlier 2099 lbs
 # weight in lbs
 funcweight <- function(x, na.rm = FALSE) if_else(x>9000 & x<9999, true = round((x-9000)*2.2),
@@ -280,6 +280,29 @@ bhv_test[,1] <- as.factor(bhv_test[,1])
 # verify to make sure GENHLTH was changed to factor
 print('After factor convert')
 sapply(bhv_train, class)
+```
+
+```{r initial accuracy}
+# Baseline Accuracy
+
+ratio_1 <- ((length(bhv_test$GENHLTH[bhv_test$GENHLTH == 1]) / length(bhv_test$GENHLTH)))
+ratio_1
+ 
+ratio_2 <- ((length(bhv_test$GENHLTH[bhv_test$GENHLTH == 2]) / length(bhv_test$GENHLTH)))
+ratio_2
+
+ratio_3 <- ((length(bhv_test$GENHLTH[bhv_test$GENHLTH == 3]) / length(bhv_test$GENHLTH)))
+ratio_3
+
+ratio_4 <- ((length(bhv_test$GENHLTH[bhv_test$GENHLTH == 4]) / length(bhv_test$GENHLTH)))
+ratio_4
+
+ratio_5 <- ((length(bhv_test$GENHLTH[bhv_test$GENHLTH == 5]) / length(bhv_test$GENHLTH)))
+ratio_5
+
+
+b_acc <- (ratio_1**2 + ratio_2**2 + ratio_3**2 + ratio_4**2 + ratio_5**2)*100
+print(paste0('The baseline accuracy of GENHLTH is: ', round(b_acc, 2), '%'))
 ```
 
 ```{r}
